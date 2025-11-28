@@ -1,50 +1,69 @@
 <?php
-require 'koneksi.php';
+include 'koneksi.php';
 
-$nama   = $_POST['nama_admin'];
-$kontak = $_POST['kontak'];
-$peran  = $_POST['peran'];
-$unit   = $_POST['unit'];
+header('Content-Type: application/json');
 
-$query = "
-    INSERT INTO admin (nama_admin, kontak, peran)
-    VALUES ('$nama', '$kontak', '$peran')
-    RETURNING id_admin
-";
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $input = json_decode(file_get_contents('php://input'), true);
+    
+    $nama_admin = $input['nama_admin'] ?? '';
+    $kontak = $input['kontak'] ?? '';
+    $peran = $input['peran'] ?? '';
 
-$result = pg_query($conn, $query);
-$row = pg_fetch_assoc($result);
-$id_admin = $row['id_admin'];
+    // Validasi input
+    if (empty($nama_admin) || empty($kontak) || empty($peran)) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'message' => 'Semua field harus diisi']);
+        exit;
+    }
 
-switch ($peran) {
-    case 'Admin Fakultas':
-        pg_query($conn, "
-            INSERT INTO fakultas (id_admin, nama_fakultas, kontak)
-            VALUES ($id_admin, '$unit', '$kontak')
-        ");
-        break;
+    // Validasi peran sesuai constraint
+    $allowed_roles = ['SuperAdmin', 'Admin Fakultas', 'Admin Departemen', 'Admin DPKU', 'Admin DUI'];
+    if (!in_array($peran, $allowed_roles)) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'message' => 'Peran tidak valid. Harus salah satu dari: ' . implode(', ', $allowed_roles)]);
+        exit;
+    }
 
-    case 'Admin Departemen':
-        pg_query($conn, "
-            INSERT INTO departemen (id_admin, nama_departemen, kontak)
-            VALUES ($id_admin, '$unit', '$kontak')
-        ");
-        break;
+    // Validasi format kontak (minimal 10 digit)
+    if (!preg_match('/^[0-9+]{10,15}$/', $kontak)) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'message' => 'Format kontak tidak valid. Minimal 10 digit angka']);
+        exit;
+    }
 
-    case 'Admin DPKU':
-        pg_query($conn, "
-            INSERT INTO dpku (dpku_id_admin, nama_unit, kontak)
-            VALUES ($id_admin, '$unit', '$kontak')
-        ");
-        break;
-
-    case 'Admin DUI':
-        pg_query($conn, "
-            INSERT INTO dui (dui_id_admin, nama_unit, kontak)
-            VALUES ($id_admin, '$unit', '$kontak')
-        ");
-        break;
+    try {
+        // Insert ke tabel Admin
+        $insert_query = "INSERT INTO admin (nama_admin, kontak, peran) VALUES (:nama_admin, :kontak, :peran) RETURNING id_admin";
+        $insert_stmt = $conn->prepare($insert_query);
+        $insert_stmt->bindParam(':nama_admin', $nama_admin);
+        $insert_stmt->bindParam(':kontak', $kontak);
+        $insert_stmt->bindParam(':peran', $peran);
+        
+        $insert_stmt->execute();
+        $result = $insert_stmt->fetch();
+        $id_admin = $result['id_admin'];
+        
+        echo json_encode([
+            'success' => true, 
+            'message' => 'Admin berhasil dibuat',
+            'data' => [
+                'id_admin' => $id_admin,
+                'nama_admin' => $nama_admin,
+                'kontak' => $kontak,
+                'peran' => $peran
+            ]
+        ]);
+        
+    } catch (PDOException $e) {
+        http_response_code(500);
+        echo json_encode(['success' => false, 'message' => 'Error: ' . $e->getMessage()]);
+    }
+    
+} else {
+    http_response_code(405);
+    echo json_encode(['success' => false, 'message' => 'Method tidak diizinkan']);
 }
 
-echo "Admin berhasil dibuat.";
+$conn = null;
 ?>
