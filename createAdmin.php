@@ -4,9 +4,8 @@ require 'koneksi.php';
 $nama   = $_POST['nama_admin'];
 $kontak = $_POST['kontak'];
 $peran  = $_POST['peran'];
-$unit   = $_POST['unit']; // nama fakultas/departemen/unit
+$unit   = $_POST['unit'];
 
-// Insert admin dan ambil ID-nya
 $query = "
     INSERT INTO admin (nama_admin, kontak, peran)
     VALUES ('$nama', '$kontak', '$peran')
@@ -17,7 +16,6 @@ $result = pg_query($conn, $query);
 $row = pg_fetch_assoc($result);
 $id_admin = $row['id_admin'];
 
-// Insert ke tabel unit sesuai peran
 switch ($peran) {
     case 'Admin Fakultas':
         pg_query($conn, "
