@@ -8,7 +8,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     
     try {
         if (!empty($id_admin)) {
-            // Read single admin
+   
             $query = "SELECT a.id_admin, a.nama_admin, a.kontak, a.peran,
                              f.nama_fakultas, d.nama_departemen, 
                              dp.nama_unit as nama_unit_dpku, du.nama_unit as nama_unit_dui
@@ -21,7 +21,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             $stmt = $conn->prepare($query);
             $stmt->bindParam(':id_admin', $id_admin);
         } else {
-            // Read all admins
+ 
             $query = "SELECT a.id_admin, a.nama_admin, a.kontak, a.peran,
                              f.nama_fakultas, d.nama_departemen, 
                              dp.nama_unit as nama_unit_dpku, du.nama_unit as nama_unit_dui
@@ -39,7 +39,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         
         $result_data = [];
         foreach ($admins as $row) {
-            // Tentukan unit berdasarkan peran
+
             $unit = '';
             switch ($row['peran']) {
                 case 'Admin Fakultas':
